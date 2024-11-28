@@ -1,5 +1,6 @@
 import pygame, math, random, cv2
 import mediapipe as mp
+from pygame import font
 
 cap = cv2.VideoCapture(0)
 cap_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -9,6 +10,7 @@ SIZE = (600, 400)
 SCREEN = pygame.display.set_mode(SIZE)
 MPH = mp.solutions.hands
 hands = MPH.Hands(min_detection_confidence=0.2, min_tracking_confidence=0.2)
+pygame.init()
 
 class Sprite:
     def __init__(self, x_pos: int, y_pos: int, radius: int, color: tuple[int]):
@@ -81,10 +83,12 @@ class Player(Sprite):
     
 numberOf = 5
 running = True
+state = True
 enemies: list[Enemy] = []
 PLAYER = Player()
 ct = 0
 score = 0
+inc = True
 for i in range(numberOf):
     enemies.append(Enemy())
 while running:
@@ -92,6 +96,15 @@ while running:
     for event in pygame.event.get():
         if event.type == "QUIT":
             running = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE and state == False:
+                state = True
+                score = 0
+                PLAYER.setVisible()
+                ct = 0
+                inc = True
+                for i in range(numberOf):
+                    enemies.append(Enemy())
     SCREEN.fill((255,255,255))
 
     if ct % 20 == 0:
@@ -106,11 +119,26 @@ while running:
     if PLAYER.willDie(enemies):
         PLAYER.setInvisible()
         print(PLAYER.visible)
+        inc = False
+        ct = 0.5
+        enemies = []
+        state = False
+
+    if inc:
+        score += 1
+    
+    if not state:
+        fonty = font.SysFont(None, 40)
+        text_surface = fonty.render(f"YOU LOSE! Press Space to try again.", True, (000,000,000))
+        SCREEN.blit(text_surface, (50,200))
 
     pos = PLAYER.getPosition()
     cv2.putText(image, f"({pos[0]},{pos[1]})", (40,40), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (000,000,000), 1)
     ct += 1
     #cv2.imshow("", image)
+    fonty = font.SysFont(None, 36)
+    text_surface = fonty.render(f"score: {score}", True, (000,000,000))
+    SCREEN.blit(text_surface, (40,40))
     
     pygame.display.flip()
     pygame.time.Clock().tick(60)
