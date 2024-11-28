@@ -4,6 +4,7 @@ import mediapipe as mp
 cap = cv2.VideoCapture(0)
 cap_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 cap_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+print(cap_width, cap_height)
 SIZE = (600, 400)
 SCREEN = pygame.display.set_mode(SIZE)
 MPH = mp.solutions.hands
@@ -18,21 +19,23 @@ class Sprite:
         self.visible = True
 
     def isTouching(self, sprite) -> bool: # type: ignore
-        if type(sprite) != Sprite:
+        if not isinstance(sprite, Sprite):
             raise TypeError("sprite parameter must be an instance of the Sprite class")
         distance = abs(math.sqrt((sprite.y_pos - self.y_pos)**2 + (sprite.x_pos - self.x_pos)**2))
-        if distance < 5:
+        if distance < 20:
             return True
         return False
     
     def draw(self, screen: pygame.Surface):
         if self.visible:
             pygame.draw.circle(screen, self.color, (self.x_pos, self.y_pos), self.radius)
+            return print("drawn")
+        print("not drawn")
     
     def getPosition(self) -> tuple[int]:
         return (self.x_pos, self.y_pos)
     
-    def setVisible(self):
+    def setInvisible(self):
         self.visible = False
     
     def setVisible(self):
@@ -40,12 +43,20 @@ class Sprite:
 
 class Enemy(Sprite):
     def __init__(self):
-        super().__init__(0, 0, 10, (255,000,000))
-        self.speed_X = random.randint(-3, 3)
-        self.speed_Y = random.randint(-2, 2)
+        super().__init__(random.randint(0, SIZE[0]), random.randint(0, SIZE[1]), 10, (255,000,000))
+        self.speed_X = random.randint(-10, 10)
+        self.speed_Y = random.randint(-8, 8)
 
     def draw(self, screen: pygame.Surface):
-        pygame.draw.circle(screen, self.color, (self.x_pos + self.speed_X, self.y_pos + self.speed_Y), self.radius)
+        if self.x_pos > 590 or self.x_pos < 10:
+            self.speed_X *= -1
+        if self.y_pos > 390 or self.y_pos < 10:
+            self.speed_Y *= -1
+        
+        self.x_pos += self.speed_X
+        self.y_pos += self.speed_Y
+            
+        pygame.draw.circle(screen, self.color, (self.x_pos, self.y_pos), self.radius)
 
 class Player(Sprite):
     def __init__(self):
@@ -57,21 +68,25 @@ class Player(Sprite):
                 return True
         return False
     
+    
     def changePosition(self, image) -> None:
         res = hands.process(image)
         image = cv2.flip(image, 1)
         landmarks = res.multi_hand_landmarks
-        print(image)
         if landmarks is None:
-            self.x_pos = 0
-            self.y_pos = 0
             return
         landmarks = landmarks[0].landmark
         self.x_pos = int(SIZE[0]-((landmarks[8].x)*cap_width)*(SIZE[0]/cap_width))
         self.y_pos = int(((landmarks[8].y)*cap_height)*(SIZE[1]/cap_height))
-        print(self.x_pos, self.y_pos)
     
+numberOf = 5
 running = True
+enemies: list[Enemy] = []
+PLAYER = Player()
+ct = 0
+score = 0
+for i in range(numberOf):
+    enemies.append(Enemy())
 while running:
     success, image = cap.read()
     for event in pygame.event.get():
@@ -79,12 +94,23 @@ while running:
             running = False
     SCREEN.fill((255,255,255))
 
-    PLAYER = Player()
+    if ct % 20 == 0:
+        enemies.append(Enemy())
+
     PLAYER.changePosition(image)
     PLAYER.draw(SCREEN)
-    enemies: list[Enemy] = []
+    
+    for e in enemies:
+        e.draw(SCREEN)
+
+    if PLAYER.willDie(enemies):
+        PLAYER.setInvisible()
+        print(PLAYER.visible)
+
     pos = PLAYER.getPosition()
     cv2.putText(image, f"({pos[0]},{pos[1]})", (40,40), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (000,000,000), 1)
+    ct += 1
+    #cv2.imshow("", image)
     
     pygame.display.flip()
     pygame.time.Clock().tick(60)
