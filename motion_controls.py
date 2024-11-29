@@ -60,6 +60,32 @@ class Enemy(Sprite):
             
         pygame.draw.circle(screen, self.color, (self.x_pos, self.y_pos), self.radius)
 
+class Reward(Sprite):
+    def __init__(self):
+        super().__init__(200, 400, 10, (000,255,000))
+        self.speed_X = random.randint(-5, 5)
+        self.speed_Y = random.randint(-10, -5)
+    
+    
+    def changePosition(self, image) -> None:
+        res = hands.process(image)
+        image = cv2.flip(image, 1)
+        landmarks = res.multi_hand_landmarks
+        if landmarks is None:
+            return
+        landmarks = landmarks[0].landmark
+        self.x_pos = int(SIZE[0]-((landmarks[8].x)*cap_width)*(SIZE[0]/cap_width))
+        self.y_pos = int(((landmarks[8].y)*cap_height)*(SIZE[1]/cap_height))
+
+    def draw(self, screen: pygame.Surface):
+        if self.visible:
+            self.x_pos += self.speed_X
+            self.y_pos += self.speed_Y
+            
+            pygame.draw.circle(screen, self.color, (self.x_pos, self.y_pos), self.radius)
+    
+
+
 class Player(Sprite):
     def __init__(self):
         super().__init__(300, 200, 10, (000,000,000))
@@ -81,10 +107,18 @@ class Player(Sprite):
         self.x_pos = int(SIZE[0]-((landmarks[8].x)*cap_width)*(SIZE[0]/cap_width))
         self.y_pos = int(((landmarks[8].y)*cap_height)*(SIZE[1]/cap_height))
     
+    def getsReward(self, rewards: list[Reward]) -> bool:
+        for r in rewards:
+            if self.isTouching(r) and r.visible:
+                r.setInvisible()
+                return True
+        return False
+    
 numberOf = 5
 running = True
 state = True
 enemies: list[Enemy] = []
+rewards: list[Enemy] = []
 PLAYER = Player()
 ct = 0
 score = 0
@@ -109,19 +143,28 @@ while running:
 
     if ct % 20 == 0:
         enemies.append(Enemy())
+    
+    if ct % 60 == 0 and ct > 0:
+        rewards.append(Reward())
 
     PLAYER.changePosition(image)
     PLAYER.draw(SCREEN)
     
     for e in enemies:
         e.draw(SCREEN)
+    
+    for r in rewards:
+        r.draw(SCREEN)
+    
+    if PLAYER.getsReward(rewards):
+        score += 100
 
     if PLAYER.willDie(enemies):
         PLAYER.setInvisible()
-        print(PLAYER.visible)
         inc = False
         ct = 0.5
         enemies = []
+        rewards = []
         state = False
 
     if inc:
@@ -133,9 +176,7 @@ while running:
         SCREEN.blit(text_surface, (50,200))
 
     pos = PLAYER.getPosition()
-    cv2.putText(image, f"({pos[0]},{pos[1]})", (40,40), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (000,000,000), 1)
     ct += 1
-    #cv2.imshow("", image)
     fonty = font.SysFont(None, 36)
     text_surface = fonty.render(f"score: {score}", True, (000,000,000))
     SCREEN.blit(text_surface, (40,40))
