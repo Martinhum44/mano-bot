@@ -1,6 +1,7 @@
 import pygame, math, random, cv2
 import mediapipe as mp
 from pygame import font
+import os
 
 cap = cv2.VideoCapture(0)
 cap_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -31,8 +32,6 @@ class Sprite:
     def draw(self, screen: pygame.Surface):
         if self.visible:
             pygame.draw.circle(screen, self.color, (self.x_pos, self.y_pos), self.radius)
-            return print("drawn")
-        print("not drawn")
     
     def getPosition(self) -> tuple[int]:
         return (self.x_pos, self.y_pos)
@@ -50,9 +49,9 @@ class Enemy(Sprite):
         self.speed_Y = random.randint(-8, 8)
 
     def draw(self, screen: pygame.Surface):
-        if self.x_pos > 590 or self.x_pos < 10:
+        if self.x_pos > 600 or self.x_pos < 0:
             self.speed_X *= -1
-        if self.y_pos > 390 or self.y_pos < 10:
+        if self.y_pos > 400 or self.y_pos < 0:
             self.speed_Y *= -1
         
         self.x_pos += self.speed_X
@@ -114,6 +113,9 @@ class Player(Sprite):
                 return True
         return False
     
+if not "best_score.txt" in os.listdir():
+    with open("best_score.txt", "w") as f:
+        f.write("0")
 numberOf = 5
 running = True
 state = True
@@ -123,8 +125,15 @@ PLAYER = Player()
 ct = 0
 score = 0
 inc = True
+beat = False
 for i in range(numberOf):
     enemies.append(Enemy())
+best_score = 0
+try: 
+    with open("best_score.txt", "r") as f:
+        best_score = f.read()
+except Exception:
+    pass
 while running:
     success, image = cap.read()
     for event in pygame.event.get():
@@ -139,6 +148,7 @@ while running:
                 inc = True
                 for i in range(numberOf):
                     enemies.append(Enemy())
+                beat = False
     SCREEN.fill((255,255,255))
 
     if ct % 20 == 0:
@@ -166,6 +176,19 @@ while running:
         enemies = []
         rewards = []
         state = False
+        try:
+            with open("best_score.txt", "w") as f:
+                print(best_score)
+                if int(best_score) < score:
+                    print("Lester")
+                    f.write(str(score))
+                    best_score = score
+                    beat = True
+                else:
+                    f.write(str(best_score))
+        except FileNotFoundError:
+            print("OH NO")
+
 
     if inc:
         score += 1
@@ -173,13 +196,21 @@ while running:
     if not state:
         fonty = font.SysFont(None, 40)
         text_surface = fonty.render(f"YOU LOSE! Press Space to try again.", True, (000,000,000))
+        if beat:
+            fontyz = font.SysFont(None, 40)
+            text_surfacezz = fontyz.render(f"New Best Score!", True, (000,000,000))
+            SCREEN.blit(text_surfacezz, (50,250))
         SCREEN.blit(text_surface, (50,200))
 
     pos = PLAYER.getPosition()
     ct += 1
     fonty = font.SysFont(None, 36)
     text_surface = fonty.render(f"score: {score}", True, (000,000,000))
-    SCREEN.blit(text_surface, (40,40))
+
+    fontz = font.SysFont(None, 36)
+    text_surface2 = fontz.render(f"best score: {best_score}", True, (000,000,000))
+    SCREEN.blit(text_surface, (50,40))
+    SCREEN.blit(text_surface2, (200,40))
     
     pygame.display.flip()
     pygame.time.Clock().tick(60)
