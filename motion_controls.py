@@ -49,9 +49,9 @@ class Enemy(Sprite):
         self.speed_Y = random.randint(-8, 8)
 
     def draw(self, screen: pygame.Surface):
-        if self.x_pos > 600 or self.x_pos < 0:
+        if self.x_pos > 600 or self.x_pos < 0: 
             self.speed_X *= -1
-        if self.y_pos > 400 or self.y_pos < 0:
+        if self.y_pos > 400  or self.y_pos < 0:
             self.speed_Y *= -1
         
         self.x_pos += self.speed_X
@@ -120,7 +120,7 @@ numberOf = 5
 running = True
 state = True
 enemies: list[Enemy] = []
-rewards: list[Enemy] = []
+rewards: list[Reward] = []
 PLAYER = Player()
 ct = 0
 score = 0
